@@ -1,8 +1,8 @@
 package controllers
 
 import actors.TwitterStreamer
-import play.api.Play.current
 import play.api.libs.json._
+import play.api.libs.streams.ActorFlow
 import play.api.mvc._
 
 class Application extends Controller {
@@ -11,12 +11,13 @@ class Application extends Controller {
     Ok(views.html.index("Tweets"))
   }
 
-  def tweets = WebSocket.acceptWithActor[String, JsValue] { request => out =>
-    TwitterStreamer.props(out)
+  def tweets = WebSocket.accept[String, JsValue] { request =>
+    ActorFlow.actorRef(out => TwitterStreamer.props(out))
+
   }
 
   def replicateFeed = Action { implicit request =>
-    Ok.feed(TwitterStreamer.subscribeNode)
+    Ok(TwitterStreamer.subscribeNode)
   }
 
 }

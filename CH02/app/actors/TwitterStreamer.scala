@@ -1,19 +1,22 @@
 package actors
 
 import akka.actor._
+import com.google.inject.Inject
 import play.api._
-import play.api.Play.current
-import play.api.libs.iteratee._
+import play.api.libs.concurrent.Execution.Implicits._
 import play.api.libs.iteratee.Concurrent.Broadcaster
+import play.api.libs.iteratee._
 import play.api.libs.json._
 import play.api.libs.oauth._
-import play.api.libs.ws.WS
+import play.api.libs.ws.{WS, WSClient}
 import play.extras.iteratees._
-import play.api.libs.concurrent.Execution.Implicits._
 
 import scala.collection.mutable.ArrayBuffer
 
-class TwitterStreamer(out: ActorRef) extends Actor {
+
+class TwitterStreamer @Inject()(val ws: WSClient)(out: ActorRef) extends Actor {
+
+
   def receive = {
     case "subscribe" =>
       Logger.info("Received subscription from a client")
@@ -27,6 +30,7 @@ class TwitterStreamer(out: ActorRef) extends Actor {
 }
 
 object TwitterStreamer {
+
 
   private var broadcastEnumerator: Option[Enumerator[JsObject]] = None
 
@@ -62,11 +66,11 @@ object TwitterStreamer {
   }
 
   def unsubscribe(subscriber: ActorRef): Unit = {
-      val index = subscribers.indexWhere(_ == subscriber)
-      if (index > 0) {
-        subscribers.remove(index)
-        Logger.info("Unsubscribed client from stream")
-      }
+    val index = subscribers.indexWhere(_ == subscriber)
+    if (index > 0) {
+      subscribers.remove(index)
+      Logger.info("Unsubscribed client from stream")
+    }
   }
 
   def subscribeNode: Enumerator[JsObject] = {
@@ -85,7 +89,8 @@ object TwitterStreamer {
 
       val (iteratee, enumerator) = Concurrent.joined[Array[Byte]]
 
-      val jsonStream: Enumerator[JsObject] = enumerator &>
+      val jsonStream: Enumerator[JsObject] =
+        enumerator &>
         Encoding.decode() &>
         Enumeratee.grouped(JsonIteratees.jsSimpleObject)
 
