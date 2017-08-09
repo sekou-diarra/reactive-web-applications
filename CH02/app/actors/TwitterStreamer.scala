@@ -1,20 +1,16 @@
 package actors
 
+
 import akka.actor._
-import com.google.inject.Inject
 import play.api._
-import play.api.libs.concurrent.Execution.Implicits._
 import play.api.libs.iteratee.Concurrent.Broadcaster
 import play.api.libs.iteratee._
 import play.api.libs.json._
-import play.api.libs.oauth._
-import play.api.libs.ws.{WS, WSClient}
-import play.extras.iteratees._
 
 import scala.collection.mutable.ArrayBuffer
 
 
-class TwitterStreamer @Inject()(val ws: WSClient)(out: ActorRef) extends Actor {
+class TwitterStreamer(out: ActorRef) extends Actor {
 
 
   def receive = {
@@ -43,7 +39,7 @@ object TwitterStreamer {
   def subscribe(out: ActorRef): Unit = {
 
     if (broadcastEnumerator.isEmpty) {
-      init()
+      //      init()
     }
 
     def twitterClient: Iteratee[JsObject, Unit] = Cont {
@@ -75,7 +71,7 @@ object TwitterStreamer {
 
   def subscribeNode: Enumerator[JsObject] = {
     if (broadcastEnumerator.isEmpty) {
-      TwitterStreamer.init()
+      //      TwitterStreamer.init()
     }
 
     broadcastEnumerator.getOrElse {
@@ -83,50 +79,50 @@ object TwitterStreamer {
     }
   }
 
-  def init(): Unit = {
-
-    credentials.map { case (consumerKey, requestToken) =>
-
-      val (iteratee, enumerator) = Concurrent.joined[Array[Byte]]
-
-      val jsonStream: Enumerator[JsObject] =
-        enumerator &>
-        Encoding.decode() &>
-        Enumeratee.grouped(JsonIteratees.jsSimpleObject)
-
-      val (e, b) = Concurrent.broadcast(jsonStream)
-
-      broadcastEnumerator = Some(e)
-      broadcaster = Some(b)
-
-      val maybeMasterNodeUrl = Option(System.getProperty("masterNodeUrl"))
-      val url = maybeMasterNodeUrl.getOrElse {
-        "https://stream.twitter.com/1.1/statuses/filter.json"
-      }
-
-      WS
-        .url(url)
-        .sign(OAuthCalculator(consumerKey, requestToken))
-        .withQueryString("track" -> "cat")
-        .get { response =>
-        Logger.info("Status: " + response.status)
-        iteratee
-      }.map { _ =>
-        Logger.info("Twitter stream closed")
-      }
-
-    } getOrElse {
-      Logger.error("Twitter credentials are not configured")
-    }
-
-  }
-
-  private def credentials = for {
-    apiKey <- Play.configuration.getString("twitter.apiKey")
-    apiSecret <- Play.configuration.getString("twitter.apiSecret")
-    token <- Play.configuration.getString("twitter.token")
-    tokenSecret <- Play.configuration.getString("twitter.tokenSecret")
-  } yield (ConsumerKey(apiKey, apiSecret), RequestToken(token, tokenSecret))
-
+  //  def init(): Unit = {
+  //
+  //    credentials.map { case (consumerKey, requestToken) =>
+  //
+  //      val (iteratee, enumerator) = Concurrent.joined[Array[Byte]]
+  //
+  //      val jsonStream: Enumerator[JsObject] =
+  //        enumerator &>
+  //        Encoding.decode() &>
+  //        Enumeratee.grouped(JsonIteratees.jsSimpleObject)
+  //
+  //      val (e, b) = Concurrent.broadcast(jsonStream)
+  //
+  //      broadcastEnumerator = Some(e)
+  //      broadcaster = Some(b)
+  //
+  //      val maybeMasterNodeUrl = Option(System.getProperty("masterNodeUrl"))
+  //      val url = maybeMasterNodeUrl.getOrElse {
+  //        "https://stream.twitter.com/1.1/statuses/filter.json"
+  //      }
+  //
+  //      ws
+  //        .url(url)
+  //        .sign(OAuthCalculator(consumerKey, requestToken))
+  //        .withQueryString("track" -> "cat")
+  //        .get { response =>
+  //        Logger.info("Status: " + response.status)
+  //        iteratee
+  //      }.map { _ =>
+  //        Logger.info("Twitter stream closed")
+  //      }
+  //
+  //    } getOrElse {
+  //      Logger.error("Twitter credentials are not configured")
+  //    }
+  //
+  //  }
+  //
+  //  private def credentials = for {
+  //    apiKey <- configuration.get[String]("twitter.apiKey")
+  //    apiSecret <- configuration.get[String]("twitter.apiSecret")
+  //    token <- configuration.get[String]("twitter.token")
+  //    tokenSecret <- configuration.get[String]("twitter.tokenSecret")
+  //  } yield (ConsumerKey(apiKey, apiSecret), RequestToken(token, tokenSecret))
+  //
 
 }
